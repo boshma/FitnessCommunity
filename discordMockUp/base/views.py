@@ -12,14 +12,6 @@ from django.contrib.auth.forms import UserCreationForm
 
 
 
-# rooms = [
-#     {'id' : 1, 'name':'Lets train chest'},
-#     {'id' : 2, 'name':'train with me'},
-#     {'id' : 3, 'name':'Cutting advice'},
-
-# ]
-
-
 def logoutUser(request):
     logout(request)
     return redirect('home')
@@ -54,12 +46,14 @@ def loginPage(request):
             user = User.objects.get(username=username)
         except:
             messages.error(request, 'User does not exist')
+        
+        # Check if user exists and password matches
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             return redirect('home')
         else:
-            messages.error(request, 'Username OR password does not exist')
+            messages.error(request, 'Invalid username and/or password')
 
     context ={'page' : page}
     return render (request, 'base/login_register.html', context)
@@ -74,7 +68,7 @@ def home(request):
     Q(description__icontains=q)) #model manager/ i = case insensitve
     room_count = rooms.count()
     topics = Topic.objects.all()
-    room_messages = Message.objects.all() #activity feed
+    room_messages = Message.objects.filter(Q(room__topic__name__icontains=q)) #activity feed
     context = {'rooms': rooms , 'topics' : topics, 'room_count' : room_count,
      'room_messages' : room_messages}
     return render(request, 'base/home.html', context) #specify what we we're passing in and what it'll be named in the template
@@ -83,7 +77,7 @@ def room(request, pk):
     room = Room.objects.get(id=pk)
     room_messages = room.message_set.all() #message = lower case for some reason
     
-    participants = room.participants.all()
+    participants = room.participants.all() #for many to many, set not needed
     if request.method == "POST":
         message = Message.objects.create(
             user = request.user,
@@ -99,6 +93,15 @@ def room(request, pk):
     context = {'room' : room, 'room_messages' : room_messages, 'participants' : participants}
     return render(request, 'base/room.html', context)
 
+def userProfile(request, pk):
+    user = User.objects.get(id=pk)
+    rooms = user.room_set.all() # gets all the child rooms of user by using the '(child)_set.all()'
+    room_messages = user.message_set.all()
+    topics = Topic.objects.all()
+    context = {'user' : user, 'rooms' : rooms, 'room_messages' : room_messages, 'topics' : topics}
+
+    return render(request, 'base/profile.html', context)
+
 @login_required(login_url='login') #redirects to login page if logged out
 def createRoom(request):
     form = RoomForm()
@@ -106,7 +109,9 @@ def createRoom(request):
     if request.method == 'POST':
         form = RoomForm(request.POST)
         if form.is_valid:
-            form.save()
+            room = form.save(commit=False) #gives instance of room
+            room.host = request.user
+            room.save()
             return redirect('home')
     context = {'form' : form}
     return render(request, 'base/room_form.html', context)
