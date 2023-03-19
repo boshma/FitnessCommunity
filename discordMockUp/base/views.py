@@ -17,12 +17,12 @@ def logoutUser(request):
     return redirect('home')
 
 def registerPage(request):
-    form = UserCreationForm()
-    if request.method == "POST":
+    form = UserCreationForm() #built in form
+    if request.method == "POST": #if form is submitted
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit = False) #freezes time to get user object and clean data
-            user.username = user.username.lower()
+            user.username = user.username.lower() #lowercase username
             user.save()
             login(request, user)
             return redirect('home')
@@ -90,11 +90,11 @@ def room(request, pk):
 
 
 
-    context = {'room' : room, 'room_messages' : room_messages, 'participants' : participants}
-    return render(request, 'base/room.html', context)
+    context = {'room' : room, 'room_messages' : room_messages, 'participants' : participants} #passing in room object
+    return render(request, 'base/room.html', context) #passing in room object   
 
-def userProfile(request, pk):
-    user = User.objects.get(id=pk)
+def userProfile(request, pk): #pk = primary key
+    user = User.objects.get(id=pk) #gets user by id
     rooms = user.room_set.all() # gets all the child rooms of user by using the '(child)_set.all()'
     room_messages = user.message_set.all()
     topics = Topic.objects.all()
@@ -107,11 +107,11 @@ def createRoom(request):
     form = RoomForm()
 
     if request.method == 'POST':
-        form = RoomForm(request.POST)
-        if form.is_valid:
+        form = RoomForm(request.POST) #creates form with data from request
+        if form.is_valid: #checks if all fields are filled
             room = form.save(commit=False) #gives instance of room
-            room.host = request.user
-            room.save()
+            room.host = request.user #sets host to current user
+            room.save() #saves to db
             return redirect('home')
     context = {'form' : form}
     return render(request, 'base/room_form.html', context)
